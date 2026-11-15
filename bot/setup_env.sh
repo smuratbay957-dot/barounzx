@@ -17,6 +17,7 @@ read -rp "ADMIN_ID [6154610636]: " ADMIN_ID; ADMIN_ID=${ADMIN_ID:-6154610636}
 read -rp "CHANNEL_USERNAME [@megaskils]: " CHANNEL; CHANNEL=${CHANNEL:-@megaskils}
 read -rp "GROUP_USERNAME [@megaskills]: " GROUP; GROUP=${GROUP:-@megaskills}
 read -rp "SITE_API_URL (bo'sh qoldirsangiz ham bo'ladi): " SITE_API_URL
+read -rp "PROXY_URL (PA free: http://proxy.server:3128 | lokal/VPS: bo'sh): " PROXY_URL
 
 cat > .env <<EOF
 BOT_TOKEN=$BOT_TOKEN
@@ -32,6 +33,7 @@ XP_PER_SKILL=20
 DB_PATH=barounzx_bot.db
 SITE_API_URL=$SITE_API_URL
 SITE_API_KEY=
+PROXY_URL=$PROXY_URL
 EOF
 
 chmod 600 .env
