@@ -12,6 +12,7 @@ async def _is_member(bot, chat, user_id) -> bool:
     try:
         member = await bot.get_chat_member(chat_id=chat, user_id=user_id)
         status = member.status
+        logger.info("obuna: chat=%r user=%s status=%s", chat, user_id, status)
         if status in ("creator", "administrator", "member"):
             return True
         if status == "restricted":
