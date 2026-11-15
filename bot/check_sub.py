@@ -19,27 +19,39 @@ def _bot() -> Bot:
     return Bot(token=BOT_TOKEN)
 
 
+def _user_id() -> int:
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        return int(sys.argv[1])
+    return ADMIN_ID
+
+
 async def check(bot: Bot, label: str, chat, user_id: int):
-    print(f"\n=== {label}: {chat!r} ===")
+    print(f"\n=== {label}: {chat!r} ===", flush=True)
     try:
         info = await bot.get_chat(chat)
-        print(f"  chat: id={info.id} type={info.type} title={info.title!r} username={info.username!r}")
+        print(
+            f"  chat: id={info.id} type={info.type} title={info.title!r} username={info.username!r}",
+            flush=True,
+        )
     except Exception as exc:  # noqa: BLE001
-        print(f"  get_chat XATO: {exc}")
+        print(f"  get_chat XATO: {exc}", flush=True)
     try:
         m = await bot.get_chat_member(chat_id=chat, user_id=user_id)
-        print(f"  get_chat_member: status={m.status}")
+        print(f"  get_chat_member: status={m.status}", flush=True)
     except Exception as exc:  # noqa: BLE001
-        print(f"  get_chat_member XATO: {exc}")
+        print(f"  get_chat_member XATO: {exc}", flush=True)
 
 
 async def main():
-    user_id = int(sys.argv[1]) if len(sys.argv) > 1 else ADMIN_ID
+    user_id = _user_id()
     bot = _bot()
+    print(f"PROXY_URL={PROXY_URL!r}", flush=True)
+    print(f"KANAL={CHANNEL_USERNAME!r}  GURUH={GROUP_USERNAME!r}", flush=True)
+    print(f"Tekshirilayotgan user_id: {user_id}", flush=True)
     try:
+        print("get_me kutilmoqda...", flush=True)
         me = await bot.get_me()
-        print(f"Bot: @{me.username} (id={me.id})")
-        print(f"Tekshirilayotgan user_id: {user_id}")
+        print(f"Bot: @{me.username} (id={me.id})", flush=True)
         await check(bot, "KANAL", CHANNEL_USERNAME, user_id)
         await check(bot, "GURUH", GROUP_USERNAME, user_id)
     finally:
