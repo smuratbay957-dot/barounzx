@@ -12,8 +12,16 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "PUT_YOUR_TOKEN_HERE")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6154610636"))
 
 # --- Majburiy obuna ---
-CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "@megaskils")
-GROUP_USERNAME = os.getenv("GROUP_USERNAME", "@megaskills")
+# Private guruh uchun username o'rniga raqamli chat_id yozing (masalan -1001234567890).
+def _chat_ref(value: str):
+    value = (value or "").strip()
+    if value.lstrip("-").isdigit():
+        return int(value)
+    return value
+
+
+CHANNEL_USERNAME = _chat_ref(os.getenv("CHANNEL_USERNAME", "@megaskils"))
+GROUP_USERNAME = _chat_ref(os.getenv("GROUP_USERNAME", "@megaskills"))
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/megaskils")
 GROUP_URL = os.getenv("GROUP_URL", "https://t.me/megaskills")
 
