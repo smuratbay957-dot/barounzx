@@ -30,3 +30,9 @@ DB_PATH = os.getenv("DB_PATH", "barounzx_bot.db")
 # Bo'sh bo'lsa: login "offline rejim"da saqlanadi (tekshirilmaydi).
 SITE_API_URL = os.getenv("SITE_API_URL", "")
 SITE_API_KEY = os.getenv("SITE_API_KEY", "")
+
+# --- Proxy (PythonAnywhere FREE plan uchun) ---
+# Free planda tashqi internetga faqat proxy orqali chiqiladi.
+# PA'da .env ga:  PROXY_URL=http://proxy.server:3128
+# Lokal/VPS'da bo'sh qoldiring.
+PROXY_URL = os.getenv("PROXY_URL", "")

@@ -7,11 +7,12 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 import database as db
-from config import BOT_TOKEN
+from config import BOT_TOKEN, PROXY_URL
 from handlers import account, admin, common, freeskill, shop, stars
 
 
@@ -22,7 +23,14 @@ async def main():
     )
     db.init_db()
 
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    default_props = DefaultBotProperties(parse_mode=ParseMode.HTML)
+    if PROXY_URL:
+        # PythonAnywhere free plan: tashqi internet faqat proxy orqali
+        logging.info("Proxy ishlatilmoqda: %s", PROXY_URL)
+        session = AiohttpSession(proxy=PROXY_URL)
+        bot = Bot(token=BOT_TOKEN, session=session, default=default_props)
+    else:
+        bot = Bot(token=BOT_TOKEN, default=default_props)
     dp = Dispatcher(storage=MemoryStorage())
 
     # Router tartibi muhim: admin/freeskill avval, umumiy keyin

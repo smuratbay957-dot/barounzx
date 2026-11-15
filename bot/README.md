@@ -59,6 +59,18 @@ Misol:
    admin qiling.
 3. Stars to'lovlari uchun qo'shimcha sozlash shart emas.
 
+## PythonAnywhere (free plan) — proxy
+
+Free planda tashqi internetga faqat PythonAnywhere proxy'si orqali chiqiladi.
+`api.telegram.org` allowlist'da, lekin aiohttp to'g'ridan-to'g'ri ulanmoqchi bo'lib
+`Network is unreachable` beradi. Yechim — `.env` da:
+
+```
+PROXY_URL=http://proxy.server:3128
+```
+
+Keyin bot proxy orqali ulanadi. (Paid planda `PROXY_URL` bo'sh qoldiriladi.)
+
 ## Sayt bilan bog'lash (keyingi qadam)
 
 Hozircha `SITE_API_URL` bo'sh — `/login` "offline rejim"da ishlaydi. Backend
