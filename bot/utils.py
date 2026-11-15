@@ -3,6 +3,10 @@
 # ============================================================
 from config import CHANNEL_USERNAME, GROUP_USERNAME, ADMIN_ID
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 async def _is_member(bot, chat, user_id) -> bool:
     try:
@@ -13,8 +17,9 @@ async def _is_member(bot, chat, user_id) -> bool:
         if status == "restricted":
             return bool(getattr(member, "is_member", False))
         return False
-    except Exception:
+    except Exception as exc:
         # Bot kanal/guruhda admin bo'lmasa yoki chat topilmasa
+        logger.warning("get_chat_member(%r, %s) xato: %s", chat, user_id, exc)
         return False
 
 
