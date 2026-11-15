@@ -4,14 +4,6 @@
 # ============================================================
 import asyncio
 import logging
-import sys
-
-
-def _dbg(msg):
-    print(f"[dbg] {msg}", file=sys.stderr, flush=True)
-
-
-_dbg("1) main.py boshlandi")
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -19,16 +11,9 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-_dbg("2) aiogram import qilindi")
-
 import database as db
 from config import BOT_TOKEN, PROXY_URL
-
-_dbg("3) config/database import qilindi")
-
 from handlers import account, admin, common, freeskill, shop, stars
-
-_dbg("4) handlers import qilindi")
 
 
 async def main():
@@ -37,18 +22,15 @@ async def main():
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
     db.init_db()
-    _dbg("5) db.init_db qilindi")
 
     default_props = DefaultBotProperties(parse_mode=ParseMode.HTML)
     if PROXY_URL:
-        # PythonAnywhere free plan: tashqi internet faqat proxy orqali
+        # Faqat PythonAnywhere free plan uchun kerak; VPS'da bo'sh qoldiriladi.
         logging.info("Proxy ishlatilmoqda: %s", PROXY_URL)
         session = AiohttpSession(proxy=PROXY_URL)
-        _dbg("6) session yaratildi")
         bot = Bot(token=BOT_TOKEN, session=session, default=default_props)
     else:
         bot = Bot(token=BOT_TOKEN, default=default_props)
-    _dbg("7) bot yaratildi")
     dp = Dispatcher(storage=MemoryStorage())
 
     # Router tartibi muhim: admin/freeskill avval, umumiy keyin
