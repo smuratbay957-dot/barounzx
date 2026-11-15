@@ -1,0 +1,24 @@
+# === Sirlar (hech qachon yuklanmasin!) ===
+.env
+*.env
+bot/.env
+!*.env.example
+
+# === Python ===
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# === Baza ===
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# === OS / editor ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
