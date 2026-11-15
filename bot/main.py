@@ -4,6 +4,9 @@
 # ============================================================
 import asyncio
 import logging
+import sys
+
+print("main.py boshlandi", file=sys.stderr, flush=True)
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
