@@ -1277,3 +1277,48 @@ body.levelup-flash::after {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* ---------- Settings / Telegram ulash ---------- */
+.settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.4rem 1.6rem;
+    backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.link-code {
+    margin: 0.6rem 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    color: var(--primary-2);
+}
+
+.settings-card code {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+}

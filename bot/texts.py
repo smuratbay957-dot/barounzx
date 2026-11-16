@@ -3,7 +3,7 @@
 # ============================================================
 from html import escape
 
-from config import CHANNEL_URL, GROUP_URL, STARS_TO_COINS, XP_PER_SKILL
+from config import STARS_TO_COINS, XP_PER_SKILL
 
 RARITY_EMOJI = {
     "common": "⚪",
@@ -23,16 +23,30 @@ def rarity_emoji(rarity: str) -> str:
 # ---------------- Asosiy ----------------
 START_NEW = (
     "👋 <b>Barounzx botiga xush kelibsiz!</b>\n\n"
-    "Bu botda siz <b>skill</b> yig'asiz, <b>tanga</b> ishlaysiz va "
+    "Bu botda siz <b>SP</b> yig'asiz, <b>tanga</b> ishlaysiz va "
     "saytdagi darajangizni oshirasiz.\n\n"
     "📢 Avval kanal va guruhga obuna bo'ling."
 )
 
-SUBSCRIBED = (
-    "✅ <b>Rahmat! Obuna tasdiqlandi.</b>\n\n"
-    "Endi botdan to'liq foydalanishingiz mumkin.\n"
-    "Quyidagi menyudan tanlang 👇"
-)
+
+def subscribed_text(user: dict) -> str:
+    if user.get("site_linked") and user.get("site_username"):
+        return (
+            "✅ <b>Rahmat! Obuna tasdiqlandi.</b>\n\n"
+            f"🌐 Sayt: <b>{escape(str(user['site_username']))}</b>\n"
+            f"💎 SP: <b>{user['skills']}</b>\n"
+            f"⚡ XP: <b>{user['xp']}</b>  |  🏆 Level: <b>{user['level']}</b>\n"
+            f"🪙 Tanga: <b>{user['coins']}</b>\n\n"
+            "Quyidagi menyudan tanlang 👇"
+        )
+    return (
+        "✅ <b>Rahmat! Obuna tasdiqlandi.</b>\n\n"
+        "🌐 <b>Saytni oching va Telegram ulang:</b>\n"
+        "1. Saytga kiring\n"
+        "2. <b>Sozlamalar → Telegram ulash</b> ni bosing\n"
+        "3. Chiqqan kodni botga <code>/ulash 123456</code> ko'rinishida yuboring\n\n"
+        "Quyidagi menyudan tanlang 👇"
+    )
 
 NOT_SUBSCRIBED = (
     "❌ <b>Siz hali obuna bo'lmagansiz.</b>\n\n"
@@ -42,11 +56,11 @@ NOT_SUBSCRIBED = (
 
 HELP_ADMIN = (
     "👑 <b>Admin buyruqlari</b>\n\n"
-    "/freeskill &lt;miqdor&gt; — kanalda Free Skill e'loni\n"
-    "/items &lt;nomi&gt;, &lt;narx&gt;, &lt;rarity&gt;, &lt;soni&gt;, &lt;skill&gt; — item yaratish\n"
+    "/freeskill &lt;miqdor&gt; — kanalda Free SP e'loni\n"
+    "/items &lt;nomi&gt;, &lt;narx&gt;, &lt;rarity&gt;, &lt;soni&gt;, &lt;sp&gt; — item yaratish\n"
     "   masalan: <code>/items Ninza qilish, 1200, epic, 10, 2</code>\n"
     "/broadcast &lt;xabar&gt; — hammaga xabar\n"
-    "/give &lt;tg_id&gt; &lt;tanga&gt; &lt;skill&gt; — foydalanuvchiga berish\n"
+    "/give &lt;tg_id&gt; &lt;tanga&gt; &lt;sp&gt; — foydalanuvchiga berish\n"
     "/stats — statistika"
 )
 
@@ -54,22 +68,23 @@ HELP_USER = (
     "ℹ️ <b>Buyruqlar</b>\n\n"
     "/start — boshlash\n"
     "/profile — profil\n"
-    "/skills — skillarim\n"
+    "/skills — SP larim\n"
     "/balance — tangam\n"
     "/shop — do'kon\n"
     "/star — Stars orqali tanga olish\n"
-    "/login — sayt hisobini ulash\n"
+    "/ulash &lt;kod&gt; — sayt hisobini ulash\n"
     "/daily — kunlik bonus"
 )
 
 
 def profile_text(user: dict) -> str:
-    linked = "✅ " + user["site_username"] if user.get("site_linked") else "❌ ulanmagan"
+    linked = "✅ " + escape(str(user["site_username"])) if user.get("site_linked") else "❌ ulanmagan"
     return (
         "👤 <b>Profil</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"🆔 ID: <code>{user['tg_id']}</code>\n"
-        f"💎 Skill: <b>{user['skills']}</b>\n"
+        f"💎 SP: <b>{user['skills']}</b>\n"
+        f"⚡ XP: <b>{user['xp']}</b>  |  🏆 Level: <b>{user['level']}</b>\n"
         f"🪙 Tanga: <b>{user['coins']}</b>\n"
         f"🔗 Sayt hisobi: {linked}\n"
         f"🔥 Kunlik seriya: <b>{user['streak']}</b>\n"
@@ -80,12 +95,13 @@ def profile_text(user: dict) -> str:
 def skills_text(user: dict) -> str:
     xp = user["skills"] * XP_PER_SKILL
     return (
-        "💎 <b>Skillaringiz</b>\n"
+        "💎 <b>SP laringiz</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        f"Skill: <b>{user['skills']}</b>\n"
-        f"Taxminiy XP: <b>{xp}</b> ({XP_PER_SKILL} XP / skill)\n"
+        f"SP: <b>{user['skills']}</b>\n"
+        f"⚡ XP: <b>{user['xp']}</b>  |  🏆 Level: <b>{user['level']}</b>\n"
+        f"Taxminiy XP: <b>{xp}</b> ({XP_PER_SKILL} XP / SP)\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "Saytda <b>Skills ko'tarish</b> tugmasi 1 skillni 20 XP ga aylantiradi."
+        "Saytda <b>SP ko'tarish</b> tugmasi 1 SP ni 20 XP ga aylantiradi."
     )
 
 
@@ -101,20 +117,20 @@ def balance_text(user: dict) -> str:
 # ---------------- Free Skill kartasi ----------------
 def freeskill_card(amount: int) -> str:
     return (
-        "🎁 <b>FREE SKILL!</b> 🎁\n"
+        "🎁 <b>FREE SP!</b> 🎁\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "🎉 <b>Admin sovg'asi!</b>\n"
-        f"💎 Miqdor: <b>+{amount} skill</b>\n"
+        f"💎 Miqdor: <b>+{amount} SP</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "⏳ Har bir o'yinchi bir marta oladi!\n"
-        "👇 Skillni olish uchun tugmani bosing"
+        "👇 SP ni olish uchun tugmani bosing"
     )
 
 
 def freeskill_announce(amount: int) -> str:
     return (
-        "🎁 <b>YANGI FREE SKILL!</b>\n\n"
-        f"Admin <b>+{amount} skill</b> sovg'a qildi!\n"
+        "🎁 <b>YANGI FREE SP!</b>\n\n"
+        f"Admin <b>+{amount} SP</b> sovg'a qildi!\n"
         "Olish uchun kanalga o'ting va tugmani bosing 👇"
     )
 
@@ -132,7 +148,7 @@ def item_card(item: dict) -> str:
         f"📦 <b>{name}</b>\n"
         f"💠 Rarity: <b>{rarity}</b>\n"
         f"💰 Narx: <b>{item['price']} tanga</b>\n"
-        f"💎 Beradi: <b>+{item['skill_value']} skill</b>\n"
+        f"💎 Beradi: <b>+{item['skill_value']} SP</b>\n"
         f"{stock_line}\n"
         "━━━━━━━━━━━━━━━━━━"
     )
@@ -147,7 +163,7 @@ def item_announce(item: dict) -> str:
         f"📦 <b>{name}</b>\n"
         f"💠 Rarity: <b>{rarity}</b>\n"
         f"💰 Narx: <b>{item['price']} tanga</b>\n"
-        f"💎 Beradi: <b>+{item['skill_value']} skill</b>\n\n"
+        f"💎 Beradi: <b>+{item['skill_value']} SP</b>\n\n"
         "Guruhdagi xabardan sotib oling 👇"
     )
 
@@ -161,7 +177,7 @@ def buy_success(item: dict, gained: int, stock: int) -> str:
         "✅ <b>Xarid muvaffaqiyatli!</b>\n"
         "━━━━━━━━━━━━━━━━━━\n"
         f"{emoji} {name}\n"
-        f"💎 +{gained} skill qo'shildi!\n"
+        f"💎 +{gained} SP qo'shildi!\n"
         f"{tail}\n"
         "━━━━━━━━━━━━━━━━━━"
     )

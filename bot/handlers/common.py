@@ -30,7 +30,8 @@ async def cmd_start(message: Message):
     if not await is_subscribed(message.bot, message.from_user.id):
         await message.answer(texts.START_NEW, reply_markup=kb.subscribe_kb())
         return
-    await message.answer(texts.SUBSCRIBED, reply_markup=kb.main_menu_kb())
+    user = db.get_user(message.from_user.id)
+    await message.answer(texts.subscribed_text(user), reply_markup=kb.main_menu_kb())
 
 
 @router.callback_query(F.data == "sub:check")
@@ -39,10 +40,12 @@ async def cb_sub_check(cq: CallbackQuery):
         await cq.answer(texts.NOT_SUBSCRIBED, show_alert=True)
         return
     await cq.answer("✅ Obuna tasdiqlandi!")
+    user = db.get_or_create_user(cq.from_user.id, cq.from_user.username, cq.from_user.first_name)
+    text = texts.subscribed_text(user)
     try:
-        await cq.message.edit_text(texts.SUBSCRIBED, reply_markup=kb.main_menu_kb())
+        await cq.message.edit_text(text, reply_markup=kb.main_menu_kb())
     except Exception:
-        await cq.message.answer(texts.SUBSCRIBED, reply_markup=kb.main_menu_kb())
+        await cq.message.answer(text, reply_markup=kb.main_menu_kb())
 
 
 @router.callback_query(F.data == "menu:home")

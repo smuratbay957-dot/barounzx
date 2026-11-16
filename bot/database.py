@@ -1,10 +1,12 @@
 # ============================================================
 #  Barounzx bot - ma'lumotlar bazasi (SQLite)
 # ============================================================
+import secrets
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 
-from config import DB_PATH
+from config import DB_PATH, XP_PER_SKILL
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -15,9 +17,22 @@ CREATE TABLE IF NOT EXISTS users (
     coins         INTEGER NOT NULL DEFAULT 0,
     site_username TEXT,
     site_linked   INTEGER NOT NULL DEFAULT 0,
+    site_token    TEXT,
+    xp            INTEGER NOT NULL DEFAULT 0,
+    level         INTEGER NOT NULL DEFAULT 1,
     last_daily    TEXT,
     streak        INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS link_codes (
+    code          TEXT PRIMARY KEY,
+    site_username TEXT NOT NULL,
+    site_token    TEXT NOT NULL,
+    tg_id         INTEGER,
+    used          INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at    TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS items (
@@ -71,9 +86,10 @@ CREATE TABLE IF NOT EXISTS payments (
 
 @contextmanager
 def db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         yield conn
         conn.commit()
@@ -84,6 +100,13 @@ def db():
 def init_db():
     with db() as c:
         c.executescript(SCHEMA)
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()}
+        if "site_token" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN site_token TEXT")
+        if "xp" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN xp INTEGER NOT NULL DEFAULT 0")
+        if "level" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN level INTEGER NOT NULL DEFAULT 1")
 
 
 # ---------------- Users ----------------
@@ -146,6 +169,175 @@ def link_site_account(tg_id, site_username):
             "UPDATE users SET site_username=?, site_linked=1 WHERE tg_id=?",
             (site_username, tg_id),
         )
+
+
+# ---------------- Sayt <-> bot ulash ----------------
+def _now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _xp_to_next(level):
+    return 100 + (max(1, level) - 1) * 50
+
+
+def create_link_code(site_username, ttl_minutes=15):
+    """Sayt uchun 6 xonali kod yaratadi: {'code', 'token', 'expires_at'}."""
+    site_username = (site_username or "").strip()
+    if not site_username:
+        return None
+    token = secrets.token_urlsafe(24)
+    expires = (_now() + timedelta(minutes=ttl_minutes)).isoformat(timespec="seconds")
+    with db() as c:
+        c.execute("DELETE FROM link_codes WHERE site_username=? AND used=0", (site_username,))
+        for _ in range(12):
+            code = f"{secrets.randbelow(1000000):06d}"
+            try:
+                c.execute(
+                    "INSERT INTO link_codes (code, site_username, site_token, expires_at) VALUES (?,?,?,?)",
+                    (code, site_username, token, expires),
+                )
+                return {"code": code, "token": token, "expires_at": expires}
+            except sqlite3.IntegrityError:
+                continue
+    return None
+
+
+def get_link_status(code):
+    with db() as c:
+        row = c.execute(
+            "SELECT lc.*, u.username AS tg_username FROM link_codes lc "
+            "LEFT JOIN users u ON u.tg_id = lc.tg_id WHERE lc.code=?",
+            (code,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def link_by_code(code, tg_id):
+    """Kodni tg_id ga bog'laydi. Muvaffaqiyatli: {'site_username': ...}."""
+    now = _now().isoformat(timespec="seconds")
+    with db() as c:
+        row = c.execute(
+            "SELECT * FROM link_codes WHERE code=? AND used=0", (code,)
+        ).fetchone()
+        if not row or row["expires_at"] < now:
+            return None
+        # Bitta sayt hisobiga faqat bitta Telegram bog'lanadi.
+        c.execute(
+            "UPDATE users SET site_linked=0, site_username=NULL, site_token=NULL "
+            "WHERE site_username=? AND tg_id<>? AND site_linked=1",
+            (row["site_username"], tg_id),
+        )
+        c.execute(
+            "UPDATE users SET site_username=?, site_linked=1, site_token=? WHERE tg_id=?",
+            (row["site_username"], row["site_token"], tg_id),
+        )
+        c.execute("UPDATE link_codes SET used=1, tg_id=? WHERE code=?", (tg_id, code))
+        return {"site_username": row["site_username"]}
+
+
+def unlink_user(tg_id):
+    with db() as c:
+        c.execute(
+            "UPDATE users SET site_linked=0, site_username=NULL, site_token=NULL WHERE tg_id=?",
+            (tg_id,),
+        )
+
+
+def unlink_site(tg_id, token):
+    with db() as c:
+        cur = c.execute(
+            "UPDATE users SET site_linked=0, site_username=NULL, site_token=NULL "
+            "WHERE tg_id=? AND site_token=?",
+            (tg_id, token),
+        )
+        return cur.rowcount > 0
+
+
+def get_site_state(tg_id, token):
+    try:
+        tg_id = int(tg_id)
+    except (TypeError, ValueError):
+        return None
+    with db() as c:
+        row = c.execute(
+            "SELECT * FROM users WHERE tg_id=? AND site_token=?", (tg_id, token)
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "tg_id": row["tg_id"],
+            "site_username": row["site_username"],
+            "skills": row["skills"],
+            "xp": row["xp"],
+            "level": row["level"],
+            "coins": row["coins"],
+        }
+
+
+def set_site_state(tg_id, token, xp, level):
+    try:
+        tg_id = int(tg_id)
+        xp = max(0, int(xp or 0))
+        level = max(1, int(level or 1))
+    except (TypeError, ValueError):
+        return None
+    with db() as c:
+        row = c.execute(
+            "SELECT * FROM users WHERE tg_id=? AND site_token=?", (tg_id, token)
+        ).fetchone()
+        if not row:
+            return None
+        c.execute("UPDATE users SET xp=?, level=? WHERE tg_id=?", (xp, level, tg_id))
+        return {
+            "tg_id": tg_id,
+            "site_username": row["site_username"],
+            "skills": row["skills"],
+            "xp": xp,
+            "level": level,
+            "coins": row["coins"],
+        }
+
+
+def raise_sp(tg_id, token):
+    """1 SP -> +XP_PER_SKILL XP. Natija: state yoki {'error': 'no_sp'} / None."""
+    try:
+        tg_id = int(tg_id)
+    except (TypeError, ValueError):
+        return None
+    with db() as c:
+        row = c.execute(
+            "SELECT * FROM users WHERE tg_id=? AND site_token=?", (tg_id, token)
+        ).fetchone()
+        if not row:
+            return None
+        if row["skills"] <= 0:
+            return {
+                "error": "no_sp",
+                "tg_id": tg_id,
+                "site_username": row["site_username"],
+                "skills": row["skills"],
+                "xp": row["xp"],
+                "level": row["level"],
+                "coins": row["coins"],
+            }
+        skills = row["skills"] - 1
+        xp = row["xp"] + XP_PER_SKILL
+        level = row["level"]
+        while xp >= _xp_to_next(level):
+            xp -= _xp_to_next(level)
+            level += 1
+        c.execute(
+            "UPDATE users SET skills=?, xp=?, level=? WHERE tg_id=?",
+            (skills, xp, level, tg_id),
+        )
+        return {
+            "tg_id": tg_id,
+            "site_username": row["site_username"],
+            "skills": skills,
+            "xp": xp,
+            "level": level,
+            "coins": row["coins"],
+        }
 
 
 # ---------------- Items ----------------

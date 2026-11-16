@@ -3,9 +3,15 @@
 #  Sirli ma'lumotlar .env faylidan o'qiladi (gitga yuklanmaydi!)
 # ============================================================
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+except ImportError:  # web app uchun dotenv shart emas
+    def load_dotenv(*args, **kwargs):
+        return False
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # --- Asosiy ---
 BOT_TOKEN = os.getenv("BOT_TOKEN", "PUT_YOUR_TOKEN_HERE")
@@ -32,10 +38,15 @@ DAILY_COINS = int(os.getenv("DAILY_COINS", "50"))
 XP_PER_SKILL = int(os.getenv("XP_PER_SKILL", "20"))
 
 # --- Saqlash ---
-DB_PATH = os.getenv("DB_PATH", "barounzx_bot.db")
+# Nisbiy yo'l bot papkasiga nisbatan hisoblanadi (web app va bot bir xil faylni ko'rsin).
+_db_path = os.getenv("DB_PATH", "barounzx_bot.db")
+DB_PATH = _db_path if os.path.isabs(_db_path) else os.path.join(BASE_DIR, _db_path)
 
-# --- Sayt bilan bog'lanish (keyinroq PythonAnywhere) ---
-# Bo'sh bo'lsa: login "offline rejim"da saqlanadi (tekshirilmaydi).
+# --- Sayt ---
+# GitHub Pages manzili (botdagi "Saytni ochish" tugmasi uchun).
+SITE_URL = os.getenv("SITE_URL", "https://smuratbay957-dot.github.io/barounzx/")
+
+# --- Sayt API (ixtiyoriy, kelajakda) ---
 SITE_API_URL = os.getenv("SITE_API_URL", "")
 SITE_API_KEY = os.getenv("SITE_API_KEY", "")
 

@@ -21,7 +21,7 @@ def _shop_text_and_kb():
     rows = []
     for it in items:
         emoji = texts.rarity_emoji(it["rarity"])
-        lines.append(f"{emoji} <b>{it['name']}</b> — {it['price']} 🪙 | +{it['skill_value']} 💎 | {it['stock']} ta")
+        lines.append(f"{emoji} <b>{it['name']}</b> — {it['price']} 🪙 | +{it['skill_value']} SP | {it['stock']} ta")
         rows.append([InlineKeyboardButton(
             text=f"🛒 {it['name']} ({it['price']}🪙)",
             callback_data=f"buy:{it['id']}",
@@ -76,7 +76,7 @@ async def cb_buy(cq: CallbackQuery):
         )
         return
 
-    await cq.answer(f"✅ +{res['gained']} skill!", show_alert=False)
+    await cq.answer(f"✅ +{res['gained']} SP!", show_alert=False)
 
     fresh = db.get_item(item_id)
     try:

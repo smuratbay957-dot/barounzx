@@ -56,7 +56,7 @@ async def _do_freeskill(message: Message, arg: str):
         pass
 
     count = await _broadcast(message.bot, texts.freeskill_announce(amount), kb.freeskill_kb(fs_id))
-    await message.answer(f"✅ Free Skill e'lon qilindi: +{amount} skill\n👥 {count} foydalanuvchiga xabar.")
+    await message.answer(f"✅ Free SP e'lon qilindi: +{amount} SP\n👥 {count} foydalanuvchiga xabar.")
 
 
 @router.message(Command("freeskill"))
@@ -80,7 +80,7 @@ async def _do_items(message: Message, arg: str):
     parts = [p.strip() for p in arg.split(",")]
     if len(parts) != 5:
         await message.answer(
-            "Foydalanish: <code>/items &lt;nomi&gt;, &lt;narx&gt;, &lt;rarity&gt;, &lt;soni&gt;, &lt;skill&gt;</code>\n"
+            "Foydalanish: <code>/items &lt;nomi&gt;, &lt;narx&gt;, &lt;rarity&gt;, &lt;soni&gt;, &lt;sp&gt;</code>\n"
             "Masalan: <code>/items Ninza qilish, 1200, epic, 10, 2</code>"
         )
         return
@@ -88,7 +88,7 @@ async def _do_items(message: Message, arg: str):
     try:
         price, stock, skill_value = int(price_s), int(stock_s), int(skill_s)
     except ValueError:
-        await message.answer("❌ narx, soni va skill butun son bo'lishi kerak.")
+        await message.answer("❌ narx, soni va SP butun son bo'lishi kerak.")
         return
     if price < 0 or stock < 0 or skill_value < 0 or not name:
         await message.answer("❌ Qiymatlar noto'g'ri.")
@@ -145,7 +145,7 @@ async def cmd_give(message: Message):
         return
     parts = message.text.split()
     if len(parts) != 4:
-        await message.answer("Foydalanish: <code>/give &lt;tg_id&gt; &lt;tanga&gt; &lt;skill&gt;</code>")
+        await message.answer("Foydalanish: <code>/give &lt;tg_id&gt; &lt;tanga&gt; &lt;SP&gt;</code>")
         return
     try:
         target = int(parts[1])
@@ -162,9 +162,9 @@ async def cmd_give(message: Message):
         db.add_coins(target, coins)
     if skills:
         db.add_skills(target, skills)
-    await message.answer(f"✅ {target} ga: +{coins} tanga, +{skills} skill.")
+    await message.answer(f"✅ {target} ga: +{coins} tanga, +{skills} SP.")
     try:
-        await message.bot.send_message(target, f"🎁 Admin sizga: +{coins} tanga, +{skills} skill berdi!")
+        await message.bot.send_message(target, f"🎁 Admin sizga: +{coins} tanga, +{skills} SP berdi!")
     except Exception:
         pass
 

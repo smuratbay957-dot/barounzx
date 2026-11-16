@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Barounzx - o'yin platformasi. Skills, Level, Shop va Super Lot.">
+    <meta name="description" content="Barounzx - o'yin platformasi. SP, Level, Shop va Super Lot.">
     <title>Barounzx | Game Platform</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,10 +22,11 @@
 
         <nav class="nav" id="nav">
             <a href="#home" class="nav-link active">Bosh sahifa</a>
-            <a href="#skills" class="nav-link">Skills</a>
+            <a href="#skills" class="nav-link">SP</a>
             <a href="#level" class="nav-link">Level</a>
             <a href="#shop" class="nav-link">Shop</a>
             <a href="#lot" class="nav-link">Super Lot</a>
+            <a href="#settings" class="nav-link">Sozlamalar</a>
         </nav>
 
         <div class="user-area">
@@ -48,11 +49,11 @@
         <section class="hero" id="home">
             <div class="hero-content reveal">
                 <span class="badge">Yangi mavsum ochildi</span>
-                <h1>Skill yig', <span class="grad">darajangni oshir</span></h1>
-                <p>Ro'yxatdan o'ting, skill yig'ib XP to'plang, Super Lot'da tanga yutib oling va Shop'dan sovg'alar oling. Hammasi offline ishlaydi.</p>
+                <h1>SP yig', <span class="grad">darajangni oshir</span></h1>
+                <p>Ro'yxatdan o'ting, SP yig'ib XP to'plang, Super Lot'da tanga yutib oling va Shop'dan sovg'alar oling. Hammasi offline ishlaydi.</p>
                 <div class="hero-actions">
                     <button class="btn btn-primary btn-lg" id="heroStart">Boshlash</button>
-                    <a class="btn btn-ghost btn-lg" href="#skills">Skills ko'rish</a>
+                    <a class="btn btn-ghost btn-lg" href="#skills">SP ko'rish</a>
                 </div>
                 <div class="hero-stats">
                     <div><strong id="heroLevel">1</strong><span>Level</span></div>
@@ -77,8 +78,8 @@
 
         <section class="section" id="skills">
             <div class="section-head reveal">
-                <h2>Skills</h2>
-                <p class="muted">Skillar <strong>Telegram bot orqali</strong> yig'iladi. Saytda har bir skillni ko'tarib <strong>+20 XP</strong> olasiz.</p>
+                <h2>SP</h2>
+                <p class="muted">SP <strong>Telegram bot orqali</strong> yig'iladi. Saytda har bir SP ni ko'tarib <strong>+20 XP</strong> olasiz.</p>
             </div>
 
             <div class="skill-summary reveal">
@@ -87,15 +88,15 @@
                 </div>
                 <div>
                     <div class="skill-total" id="skillTotal">0</div>
-                    <div class="muted small">Mavjud skillar</div>
+                    <div class="muted small">Mavjud SP</div>
                 </div>
-                <button class="btn btn-primary btn-lg" id="raiseSkill">Skills ko'tarish (1 skill &rarr; +20 XP)</button>
+                <button class="btn btn-primary btn-lg" id="raiseSkill">SP ko'tarish (1 SP &rarr; +20 XP)</button>
             </div>
 
             <div class="info-box reveal">
                 <strong>Qanday ishlaydi?</strong><br>
-                Botdan yig'ilgan skillni ko'tarsangiz <b>+20 XP</b> olasiz (1 skill = 20 XP).
-                Skill <b>0</b> bo'lsa ko'tarib bo'lmaydi. Skillarni botda <b>Free Skill</b> va <b>rarity itemlar</b> orqali yig'asiz.
+                Botdan yig'ilgan SP ni ko'tarsangiz <b>+20 XP</b> olasiz (1 SP = 20 XP).
+                SP <b>0</b> bo'lsa ko'tarib bo'lmaydi. SP larni botda <b>Free SP</b> va <b>rarity itemlar</b> orqali yig'asiz.
             </div>
         </section>
 
@@ -126,7 +127,7 @@
                         </div>
                     </div>
                     <div class="stat-grid">
-                        <div class="stat-card"><span class="stat-value" id="statSkills">0</span><span class="stat-label">Skillar</span></div>
+                        <div class="stat-card"><span class="stat-value" id="statSkills">0</span><span class="stat-label">SP</span></div>
                         <div class="stat-card"><span class="stat-value" id="statSpins">0</span><span class="stat-label">Spinlar</span></div>
                         <div class="stat-card"><span class="stat-value" id="statBuys">0</span><span class="stat-label">Xaridlar</span></div>
                         <div class="stat-card"><span class="stat-value" id="statStreak">0</span><span class="stat-label">Kunlik seriya</span></div>
@@ -173,6 +174,14 @@
                 </div>
             </div>
         </section>
+
+        <section class="section" id="settings">
+            <div class="section-head reveal">
+                <h2>Sozlamalar</h2>
+                <p class="muted">Telegram hisobingizni sayt bilan ulang — SP va XP sinxron bo'ladi.</p>
+            </div>
+            <div class="settings-card reveal" id="settingsCard"></div>
+        </section>
     </main>
 
     <footer class="footer">
@@ -183,10 +192,11 @@
                 <p class="muted small">Offline o'yin platformasi. 2026.</p>
             </div>
             <div class="footer-links">
-                <a href="#skills">Skills</a>
+                <a href="#skills">SP</a>
                 <a href="#level">Level</a>
                 <a href="#shop">Shop</a>
                 <a href="#lot">Super Lot</a>
+                <a href="#settings">Sozlamalar</a>
             </div>
         </div>
     </footer>

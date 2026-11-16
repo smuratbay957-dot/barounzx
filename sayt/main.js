@@ -1,15 +1,16 @@
 "use strict";
 
 /* ============================================================
-   Barounzx - offline o'yin platformasi
+   Barounzx - o'yin platformasi
    - Hisoblar (ism + parol), ism takrorlanmaydi (case-insensitive)
    - Gmail ulash + 6 xonali kod orqali parolni tiklash
-   - Skill yig'ish: 1 skill = 20 XP
-   - Kelajakda Python Telegram bot uchun hook: window.Barounzx
-   Barcha ma'lumot localStorage'da (offline).
+   - SP yig'ish: 1 SP = 20 XP
+   - Telegram ulash (kod orqali) + SP/XP sinxron
+   Tarmoq bo'lmasa hammasi localStorage'da offline ishlaydi.
    ============================================================ */
 
 const STORE_KEY = "barounzx_v2";
+const API_BASE = "https://zxmax.pythonanywhere.com";
 const SPIN_COST = 50;
 const DAILY_BONUS = 75;
 const XP_PER_SKILL = 20;
@@ -25,7 +26,7 @@ const SKILL_CATEGORIES = [
 ];
 
 const SHOP_ITEMS = [
-    { id: "boost_xp", icon: "3", name: "XP Boost", desc: "Keyingi skill 2x XP beradi.", price: 120 },
+    { id: "boost_xp", icon: "3", name: "XP Boost", desc: "Keyingi SP 2x XP beradi.", price: 120 },
     { id: "theme_pink", icon: "4", name: "Pushti mavzu", desc: "Orqa fon pushti bo'ladi.", price: 300 },
     { id: "theme_blue", icon: "5", name: "Moviy mavzu", desc: "Orqa fon moviy bo'ladi.", price: 300 },
     { id: "badge_gold", icon: "1", name: "Oltin nishon", desc: "Profil uchun oltin nishon.", price: 150 },
@@ -40,6 +41,7 @@ let store = loadStore();
 let pendingReset = null;
 let wheelAngle = 0;
 let spinning = false;
+let linkPollTimer = null;
 
 function defaultStore() {
     return { accounts: {}, current: null };
@@ -80,7 +82,11 @@ function newAccount(username, passHash, salt, email) {
         stats: { spins: 0, buys: 0, streak: 0 },
         lastBonus: "",
         theme: "default",
-        boost: false
+        boost: false,
+        tgId: null,
+        tgUsername: "",
+        siteToken: null,
+        linkCode: null
     };
 }
 
@@ -153,6 +159,215 @@ function toast(message, type = "info") {
 function setError(msg) {
     const el = $("#authError");
     if (el) el.textContent = msg || "";
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[ch]));
+}
+
+/* ---------- Sayt <-> bot API ---------- */
+function apiUrl(path) {
+    return API_BASE.replace(/\/$/, "") + path;
+}
+
+async function apiGet(path) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+        const resp = await fetch(apiUrl(path), { signal: ctrl.signal, cache: "no-store" });
+        return await resp.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function apiPost(path, body) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+        const resp = await fetch(apiUrl(path), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body || {}),
+            signal: ctrl.signal
+        });
+        return await resp.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function refreshServerState() {
+    const acc = getAcc();
+    if (!acc || !acc.tgId || !acc.siteToken) {
+        renderSettings();
+        return;
+    }
+    let res = null;
+    try {
+        res = await apiGet(`/api/state?tg_id=${encodeURIComponent(acc.tgId)}&token=${encodeURIComponent(acc.siteToken)}`);
+    } catch (err) {
+        res = null;
+    }
+    if (res && res.ok) {
+        acc.skillPoints = res.skills;
+        acc.xp = res.xp;
+        acc.level = res.level;
+        saveStore();
+    }
+    render();
+}
+
+function pushServerState(acc) {
+    if (!acc || !acc.tgId || !acc.siteToken) return;
+    apiPost("/api/state", {
+        tg_id: acc.tgId,
+        token: acc.siteToken,
+        xp: acc.xp,
+        level: acc.level
+    }).catch(() => {});
+}
+
+async function startTelegramLink() {
+    const acc = getAcc();
+    if (!acc) {
+        showView("login");
+        return;
+    }
+    toast("Kod olinmoqda...");
+    let res = null;
+    try {
+        res = await apiPost("/api/link/start", { username: acc.username });
+    } catch (err) {
+        res = null;
+    }
+    if (!res || !res.ok) {
+        toast("Server bilan aloqa yo'q. Keyinroq urinib ko'ring.", "danger");
+        return;
+    }
+    acc.linkCode = res.code;
+    acc.siteToken = res.token;
+    saveStore();
+    renderSettings();
+    toast(`Kod: ${res.code}`, "success");
+    pollLinkStatus(res.code);
+}
+
+function pollLinkStatus(code) {
+    if (linkPollTimer) clearTimeout(linkPollTimer);
+    linkPollTimer = setTimeout(async () => {
+        const acc = getAcc();
+        if (!acc || acc.linkCode !== code) return;
+        let res = null;
+        try {
+            res = await apiGet(`/api/link/status?code=${encodeURIComponent(code)}`);
+        } catch (err) {
+            res = null;
+        }
+        if (res && res.linked) {
+            acc.tgId = res.tg_id;
+            acc.tgUsername = res.tg_username || "";
+            acc.siteToken = res.site_token || acc.siteToken;
+            acc.linkCode = null;
+            saveStore();
+            await refreshServerState();
+            toast("✅ Telegram ulandi!", "success");
+            return;
+        }
+        if (res && res.ok === false && res.error === "kod topilmadi") {
+            acc.linkCode = null;
+            saveStore();
+            renderSettings();
+            toast("Kod muddati tugadi. Yangi kod oling.", "danger");
+            return;
+        }
+        pollLinkStatus(code);
+    }, 2500);
+}
+
+async function unlinkTelegram() {
+    const acc = getAcc();
+    if (!acc) return;
+    if (acc.tgId && acc.siteToken) {
+        try {
+            await apiPost("/api/unlink", { tg_id: acc.tgId, token: acc.siteToken });
+        } catch (err) {
+            /* tarmoq bo'lmasa ham lokal uzamiz */
+        }
+    }
+    if (linkPollTimer) {
+        clearTimeout(linkPollTimer);
+        linkPollTimer = null;
+    }
+    acc.tgId = null;
+    acc.tgUsername = "";
+    acc.siteToken = null;
+    acc.linkCode = null;
+    saveStore();
+    render();
+    toast("Telegram uzildi.");
+}
+
+function renderSettings() {
+    const card = $("#settingsCard");
+    if (!card) return;
+    const acc = getAcc();
+
+    if (!acc) {
+        card.innerHTML = `
+            <div class="settings-row">
+                <div>
+                    <div class="settings-title">Telegram ulash</div>
+                    <p class="muted small">Avval saytga kiring, so'ng Telegram hisobingizni ulang.</p>
+                </div>
+                <button class="btn btn-primary" data-action="login">Kirish</button>
+            </div>`;
+        return;
+    }
+
+    if (acc.tgId && acc.siteToken) {
+        const who = acc.tgUsername ? "@" + escapeHtml(acc.tgUsername) : "ID " + escapeHtml(acc.tgId);
+        card.innerHTML = `
+            <div class="settings-row">
+                <div>
+                    <div class="settings-title">✅ Telegram ulangan</div>
+                    <p class="muted small">${who} · SP: ${acc.skillPoints} · XP: ${acc.xp} · Level: ${acc.level}</p>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-ghost" data-action="refresh">Yangilash</button>
+                    <button class="btn btn-ghost" data-action="unlink">Uzish</button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    if (acc.linkCode) {
+        card.innerHTML = `
+            <div class="settings-row">
+                <div>
+                    <div class="settings-title">Telegram ulash</div>
+                    <p class="muted small">Botga quyidagi kodni yuboring:</p>
+                    <div class="link-code">${escapeHtml(acc.linkCode)}</div>
+                    <p class="muted small">Buyruq: <code>/ulash ${escapeHtml(acc.linkCode)}</code> · 15 daqiqa amal qiladi</p>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-ghost" data-action="regen">Yangi kod</button>
+                    <button class="btn btn-ghost" data-action="cancel">Bekor qilish</button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    card.innerHTML = `
+        <div class="settings-row">
+            <div>
+                <div class="settings-title">Telegram ulash</div>
+                <p class="muted small">Kod oling, botga <code>/ulash kod</code> yuboring — SP va XP sinxron bo'ladi.</p>
+            </div>
+            <button class="btn btn-primary" data-action="link">Kod olish</button>
+        </div>`;
 }
 
 /* ---------- Kod yuborish (offline demo) ---------- */
@@ -292,7 +507,12 @@ function viewProfile() {
         </div>
         <div class="profile-row">
             <div><div class="profile-label">Gmail</div><div class="profile-value">${email}</div></div>
-            <div class="profile-value">${acc.skillPoints} skill</div>
+            <div class="profile-value">${acc.skillPoints} SP</div>
+        </div>
+        <div class="profile-row">
+            <div><div class="profile-label">Telegram</div>
+                <div class="profile-value">${acc.tgId ? (acc.tgUsername ? "@" + escapeHtml(acc.tgUsername) : "ID " + escapeHtml(acc.tgId)) : "ulanmagan"}</div></div>
+            <div class="profile-value">${acc.xp} XP</div>
         </div>
         <div class="divider"></div>
         <form id="emailForm" autocomplete="off">
@@ -389,6 +609,7 @@ async function doRegister(name, email, pass, pass2) {
     render();
     closeModal();
     toast(`Xush kelibsiz, ${name}!`, "success");
+    refreshServerState();
 }
 
 async function doLogin(name, pass) {
@@ -403,6 +624,7 @@ async function doLogin(name, pass) {
     render();
     closeModal();
     toast(`Xush kelibsiz, ${acc.username}!`, "success");
+    refreshServerState();
 }
 
 function doForgot(name) {
@@ -483,6 +705,10 @@ function saveEmail(email) {
 }
 
 function logout() {
+    if (linkPollTimer) {
+        clearTimeout(linkPollTimer);
+        linkPollTimer = null;
+    }
     store.current = null;
     saveStore();
     render();
@@ -508,6 +734,7 @@ function gainXp(acc, amount) {
         document.body.classList.add("levelup-flash");
         setTimeout(() => document.body.classList.remove("levelup-flash"), 600);
     }
+    pushServerState(acc);
 }
 
 function addSkillPoints(acc, count) {
@@ -516,15 +743,66 @@ function addSkillPoints(acc, count) {
     return count;
 }
 
-function raiseSkill() {
+async function raiseSkill() {
     const acc = getAcc();
     if (!acc) {
-        toast("Skills ko'tarish uchun avval kiring.", "danger");
+        toast("SP ko'tarish uchun avval kiring.", "danger");
         showView("login");
         return;
     }
+
+    if (acc.tgId && acc.siteToken) {
+        const beforeLevel = acc.level;
+        let res = null;
+        try {
+            res = await apiPost("/api/raise", { tg_id: acc.tgId, token: acc.siteToken });
+        } catch (err) {
+            res = null;
+        }
+        if (res && res.ok) {
+            const boosted = !!acc.boost;
+            const gained = boosted ? XP_PER_SKILL * 2 : XP_PER_SKILL;
+            acc.skillPoints = res.skills;
+            let newXp = res.xp;
+            let newLevel = res.level;
+            if (boosted) {
+                acc.boost = false;
+                newXp += XP_PER_SKILL;
+                while (newXp >= xpToNext(newLevel)) {
+                    newXp -= xpToNext(newLevel);
+                    newLevel += 1;
+                }
+            }
+            acc.xp = newXp;
+            acc.level = newLevel;
+            if (newLevel > beforeLevel) {
+                let reward = 0;
+                for (let lv = beforeLevel + 1; lv <= newLevel; lv++) reward += 25 + lv * 10;
+                acc.coins += reward;
+                toast(`Level ${newLevel}! +${reward} tanga`, "success");
+                document.body.classList.add("levelup-flash");
+                setTimeout(() => document.body.classList.remove("levelup-flash"), 600);
+            }
+            saveStore();
+            render();
+            if (newXp !== res.xp || newLevel !== res.level) pushServerState(acc);
+            toast(`SP ko'tarildi: +${gained} XP`, "success");
+            return;
+        }
+        if (res) {
+            if (typeof res.skills === "number") acc.skillPoints = Math.max(0, res.skills);
+            saveStore();
+            render();
+            toast(res.error === "no_sp"
+                ? "SP yo'q. Bot orqali SP yig'ing."
+                : "Server xatosi. Qayta urinib ko'ring.", "danger");
+            return;
+        }
+        toast("Server bilan aloqa yo'q — offline hisoblandi.", "danger");
+    }
+
     if (acc.skillPoints <= 0) {
-        toast("Skilingiz yo'q. Bot orqali skill yig'ing.", "danger");
+        toast("SP yo'q. Bot orqali SP yig'ing.", "danger");
         return;
     }
     const mult = acc.boost ? 2 : 1;
@@ -534,7 +812,7 @@ function raiseSkill() {
     gainXp(acc, XP_PER_SKILL * mult);
     saveStore();
     render();
-    toast(`Skill ko'tarildi: +${XP_PER_SKILL * mult} XP`, "success");
+    toast(`SP ko'tarildi: +${XP_PER_SKILL * mult} XP`, "success");
 }
 
 function buy(itemId) {
@@ -654,6 +932,7 @@ function render() {
 
     renderUser();
     renderShop();
+    renderSettings();
 }
 
 function renderUser() {
@@ -762,13 +1041,39 @@ function setupEvents() {
     $("#raiseSkill").addEventListener("click", raiseSkill);
     $("#spinBtn").addEventListener("click", spin);
     $("#dailyBonus").addEventListener("click", claimDaily);
+
+    const settingsCard = $("#settingsCard");
+    if (settingsCard) {
+        settingsCard.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-action]");
+            if (!btn) return;
+            const action = btn.dataset.action;
+            if (action === "login") {
+                showView("login");
+            } else if (action === "link" || action === "regen") {
+                startTelegramLink();
+            } else if (action === "cancel") {
+                const acc = getAcc();
+                if (acc) {
+                    acc.linkCode = null;
+                    saveStore();
+                    renderSettings();
+                }
+            } else if (action === "refresh") {
+                refreshServerState();
+                toast("Yangilanmoqda...");
+            } else if (action === "unlink") {
+                unlinkTelegram();
+            }
+        });
+    }
+
     $("#modal").querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", closeModal));
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 }
 
 /* ============================================================
-   Telegram bot uchun hook (kelajakda)
-   Bot backend orqali skill qo'shadi. Test uchun konsolda:
+   Console/hook: SP qo'shish. Test uchun konsolda:
      Barounzx.addSkills(3)
    ============================================================ */
 window.Barounzx = {
@@ -794,6 +1099,13 @@ function init() {
     setupReveal();
     setupEvents();
     render();
+    const acc = getAcc();
+    if (acc && acc.tgId && acc.siteToken) refreshServerState();
+    if (acc && acc.linkCode) pollLinkStatus(acc.linkCode);
+    document.addEventListener("visibilitychange", () => {
+        const cur = getAcc();
+        if (!document.hidden && cur && cur.tgId && cur.siteToken) refreshServerState();
+    });
 }
 
 document.addEventListener("DOMContentLoaded", init);

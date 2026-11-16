@@ -3,7 +3,7 @@
 # ============================================================
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import CHANNEL_URL, GROUP_URL
+from config import CHANNEL_URL, GROUP_URL, SITE_URL
 
 
 def subscribe_kb() -> InlineKeyboardMarkup:
@@ -23,16 +23,19 @@ def main_menu_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="👤 Profil", callback_data="menu:profile"),
         ],
         [
-            InlineKeyboardButton(text="💎 Skillarim", callback_data="menu:skills"),
+            InlineKeyboardButton(text="💎 SP larim", callback_data="menu:skills"),
             InlineKeyboardButton(text="🪙 Tangam", callback_data="menu:balance"),
         ],
-        [InlineKeyboardButton(text="⭐ Stars orqali tanga", callback_data="menu:stars")],
+        [
+            InlineKeyboardButton(text="⭐ Stars orqali tanga", callback_data="menu:stars"),
+            InlineKeyboardButton(text="🌐 Saytni ochish", url=SITE_URL),
+        ],
     ])
 
 
 def freeskill_kb(fs_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎁 Skillni olish", callback_data=f"fs:{fs_id}")],
+        [InlineKeyboardButton(text="🎁 SP ni olish", callback_data=f"fs:{fs_id}")],
     ])
 
 

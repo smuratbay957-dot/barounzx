@@ -1,80 +1,74 @@
 # ============================================================
-#  Sayt hisobini ulash: /login (ism + parol -> backend tekshiradi)
+#  Sayt hisobini ulash: sayt kod beradi -> /ulash <kod>
 # ============================================================
-from aiogram import F, Router
+from html import escape
+
+from aiogram import Router
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message
 
 import database as db
 import keyboards as kb
-from site_api import verify_site_login
+import texts
+from utils import is_subscribed
 
 router = Router()
 
+LINK_HELP = (
+    "🔗 <b>Sayt hisobini ulash</b>\n\n"
+    "1. Saytga kiring\n"
+    "2. <b>Sozlamalar → Telegram ulash</b> ni bosing\n"
+    "3. Chiqqan 6 xonali kodni <code>/ulash 123456</code> ko'rinishida yuboring"
+)
 
-class Login(StatesGroup):
-    username = State()
-    password = State()
+
+@router.message(Command("ulash", "link"))
+async def cmd_link(message: Message):
+    db.get_or_create_user(
+        message.from_user.id, message.from_user.username, message.from_user.first_name
+    )
+    if not await is_subscribed(message.bot, message.from_user.id):
+        await message.answer(texts.START_NEW, reply_markup=kb.subscribe_kb())
+        return
+
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        await message.answer(LINK_HELP)
+        return
+
+    code = "".join(ch for ch in parts[1] if ch.isdigit())
+    if len(code) != 6:
+        await message.answer("❌ Kod 6 xonali bo'lishi kerak.\n\n" + LINK_HELP)
+        return
+
+    res = db.link_by_code(code, message.from_user.id)
+    if not res:
+        await message.answer(
+            "❌ Kod noto'g'ri yoki muddati tugagan.\n"
+            "Saytda <b>Sozlamalar → Telegram ulash</b> orqali yangi kod oling."
+        )
+        return
+
+    user = db.get_user(message.from_user.id)
+    await message.answer(
+        "✅ <b>Telegram ulandi!</b>\n\n"
+        f"🌐 Sayt: <b>{escape(str(res['site_username']))}</b>\n"
+        f"💎 SP: <b>{user['skills']}</b>\n"
+        f"⚡ XP: <b>{user['xp']}</b>  |  🏆 Level: <b>{user['level']}</b>\n\n"
+        "Endi /start da sayt statistikasi ko'rinadi.",
+        reply_markup=kb.main_menu_kb(),
+    )
 
 
 @router.message(Command("login"))
-async def cmd_login(message: Message, state: FSMContext):
-    user = db.get_or_create_user(
+async def cmd_login(message: Message):
+    await message.answer(LINK_HELP)
+
+
+@router.message(Command("uzish", "unlink"))
+async def cmd_unlink(message: Message):
+    db.get_or_create_user(
         message.from_user.id, message.from_user.username, message.from_user.first_name
     )
-    if user.get("site_linked"):
-        await message.answer(
-            f"🔗 Siz allaqachon ulangansiz: <b>{user['site_username']}</b>"
-        )
-        return
-    await state.set_state(Login.username)
-    await message.answer(
-        "🔗 <b>Sayt hisobini ulash</b>\n\n"
-        "Saytdagi <b>ismingizni</b> kiriting:",
-        reply_markup=kb.cancel_kb(),
-    )
-
-
-@router.message(Login.username)
-async def login_username(message: Message, state: FSMContext):
-    await state.update_data(username=(message.text or "").strip())
-    await state.set_state(Login.password)
-    await message.answer("🔒 Endi <b>parolingizni</b> kiriting:\n\n"
-                         "<i>Parol xavfsizlik uchun o'chiriladi.</i>")
-
-
-@router.message(Login.password)
-async def login_password(message: Message, state: FSMContext):
-    data = await state.get_data()
-    username = data.get("username", "")
-    password = message.text or ""
-    try:
-        await message.delete()
-    except Exception:
-        pass
-
-    ok, info = await verify_site_login(username, password)
-    if not ok:
-        await state.clear()
-        await message.answer(f"❌ {info}\n\nQaytadan urinish uchun /login yuboring.")
-        return
-
-    db.link_site_account(message.from_user.id, username)
-    await state.clear()
-    note = " (offline rejim)" if info == "offline" else ""
-    await message.answer(
-        f"✅ Hisob ulandi: <b>{username}</b>{note}\n\n"
-        "Endi botdagi skill va tangalar saytingiz bilan bog'lanadi."
-    )
-
-
-@router.callback_query(F.data == "login:cancel")
-async def login_cancel(cq: CallbackQuery, state: FSMContext):
-    await state.clear()
-    await cq.answer("Bekor qilindi.")
-    try:
-        await cq.message.edit_text("❌ Ulanish bekor qilindi.")
-    except Exception:
-        pass
+    db.unlink_user(message.from_user.id)
+    await message.answer("🔓 Sayt hisobi uzildi. Qayta ulash uchun saytda yangi kod oling.")

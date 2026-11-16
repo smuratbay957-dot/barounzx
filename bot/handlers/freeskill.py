@@ -27,17 +27,17 @@ async def cb_claim_freeskill(cq: CallbackQuery):
 
     ok = db.claim_freeskill(fs_id, uid, fs["amount"])
     if not ok:
-        await cq.answer("Siz bu skillni allaqachon oldingiz! 🎁", show_alert=True)
+        await cq.answer("Siz bu SP ni allaqachon oldingiz! 🎁", show_alert=True)
         return
 
-    await cq.answer(f"🎉 +{fs['amount']} skill qo'shildi!", show_alert=True)
+    await cq.answer(f"🎉 +{fs['amount']} SP qo'shildi!", show_alert=True)
     user = db.get_user(uid)
     try:
         await cq.bot.send_message(
             uid,
-            f"🎁 <b>Free Skill olindi!</b>\n\n"
-            f"💎 +{fs['amount']} skill\n"
-            f"💎 Jami: <b>{user['skills']}</b> skill",
+            f"🎁 <b>Free SP olindi!</b>\n\n"
+            f"💎 +{fs['amount']} SP\n"
+            f"💎 Jami: <b>{user['skills']}</b> SP",
         )
     except Exception:
         pass
