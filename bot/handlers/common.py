@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery, Message
 import database as db
 import keyboards as kb
 import texts
-from config import ADMIN_ID, DAILY_COINS
+from config import ADMIN_ID
 from utils import is_admin, is_subscribed
 
 router = Router()
@@ -120,11 +120,13 @@ async def cmd_daily(message: Message):
         return
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     streak = user["streak"] + 1 if user["last_daily"] == yesterday else 1
-    reward = DAILY_COINS + streak * 5
+    reward = min(streak, 4)
     db.add_coins(user["tg_id"], reward)
+    db.add_xp(user["tg_id"], 10, reward_coins=False)
     db.set_daily(user["tg_id"], today, streak)
     await message.answer(
         f"🎁 <b>Kunlik bonus!</b>\n\n"
         f"🪙 +{reward} tanga\n"
+        f"⚡ +10 XP\n"
         f"🔥 Seriya: <b>{streak}</b> kun"
     )

@@ -97,8 +97,8 @@ function render() {
     $("avatar").textContent = String(name).charAt(0).toUpperCase();
 
     $("dailyHint").textContent = state.streak
-        ? `Seriya: ${state.streak} kun. Har kuni tanga va XP oling.`
-        : "Har kuni tanga va XP oling.";
+        ? `Seriya: ${state.streak} kun. Bugun: +${Math.min(state.streak, 4)} tanga, +10 XP.`
+        : "Har kuni 1-4 tanga va 10 XP oling.";
 }
 
 function renderShop() {

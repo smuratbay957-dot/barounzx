@@ -7,7 +7,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 
-from config import DAILY_COINS, DB_PATH, XP_PER_SKILL
+from config import DB_PATH, XP_PER_SKILL
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -148,6 +148,34 @@ def add_skills(tg_id, amount):
 def add_coins(tg_id, amount):
     with db() as c:
         c.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (amount, tg_id))
+
+
+def add_xp(tg_id, amount, reward_coins=True):
+    """XP qo'shadi. Level oshganda tanga mukofoti ixtiyoriy."""
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
+        if not row:
+            return None
+        xp = row["xp"] + amount
+        level = row["level"]
+        coins = row["coins"]
+        while xp >= _xp_to_next(level):
+            xp -= _xp_to_next(level)
+            level += 1
+            if reward_coins:
+                coins += 25 + level * 10
+        c.execute(
+            "UPDATE users SET xp=?, level=?, coins=? WHERE tg_id=?",
+            (xp, level, coins, tg_id),
+        )
+        return {
+            "tg_id": tg_id,
+            "site_username": row["site_username"],
+            "skills": row["skills"],
+            "xp": xp,
+            "level": level,
+            "coins": coins,
+        }
 
 
 def try_spend_coins(tg_id, amount):
@@ -423,10 +451,13 @@ def webapp_daily(token):
             return {"error": "already", **_web_state(row)}
         yesterday = (date.today() - timedelta(days=1)).isoformat()
         streak = row["streak"] + 1 if row["last_daily"] == yesterday else 1
-        reward = DAILY_COINS + streak * 5
-        xp, level, coins = _apply_levels(
-            row["xp"] + 25, row["level"], row["coins"] + reward
-        )
+        reward = min(streak, 4)
+        xp = row["xp"] + 10
+        level = row["level"]
+        while xp >= _xp_to_next(level):
+            xp -= _xp_to_next(level)
+            level += 1
+        coins = row["coins"] + reward
         c.execute(
             "UPDATE users SET coins=?, xp=?, level=?, last_daily=?, streak=? WHERE tg_id=?",
             (coins, xp, level, today, streak, row["tg_id"]),

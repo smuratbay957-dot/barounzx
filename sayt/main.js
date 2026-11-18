@@ -753,7 +753,7 @@ async function changeCoins(acc, delta) {
     return acc.coins;
 }
 
-async function gainXp(acc, amount) {
+async function gainXp(acc, amount, rewardCoins = true) {
     acc.xp += amount;
     let leveled = false;
     while (acc.xp >= xpToNext(acc.level)) {
@@ -761,8 +761,10 @@ async function gainXp(acc, amount) {
         acc.level += 1;
         leveled = true;
         const reward = 25 + acc.level * 10;
-        await changeCoins(acc, reward);
-        toast(`Level ${acc.level}! +${reward} tanga`, "success");
+        if (rewardCoins) await changeCoins(acc, reward);
+        toast(rewardCoins
+            ? `Level ${acc.level}! +${reward} tanga`
+            : `Level ${acc.level}!`, "success");
     }
     if (leveled) {
         document.body.classList.add("levelup-flash");
@@ -917,12 +919,12 @@ async function claimDaily() {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     acc.stats.streak = acc.lastBonus === yesterday ? acc.stats.streak + 1 : 1;
     acc.lastBonus = todayKey();
-    const reward = DAILY_BONUS + acc.stats.streak * 10;
+    const reward = Math.min(acc.stats.streak, 4);
     await changeCoins(acc, reward);
-    await gainXp(acc, 25);
+    await gainXp(acc, 10, false);
     saveStore();
     render();
-    toast(`Kunlik bonus: +${reward} tanga (seriya ${acc.stats.streak})`, "gold");
+    toast(`Kunlik bonus: +${reward} tanga, +10 XP (seriya ${acc.stats.streak})`, "gold");
 }
 
 /* ============================================================
