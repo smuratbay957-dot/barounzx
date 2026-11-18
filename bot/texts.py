@@ -61,6 +61,8 @@ HELP_ADMIN = (
     "   masalan: <code>/items Ninza qilish, 1200, epic, 10, 2</code>\n"
     "/broadcast &lt;xabar&gt; — hammaga xabar\n"
     "/give &lt;tg_id&gt; &lt;tanga&gt; &lt;sp&gt; — foydalanuvchiga berish\n"
+    "/addcoin [&lt;tg_id&gt;] &lt;miqdor&gt; — tanga berish (IDsiz adminga)\n"
+    "/addsp [&lt;tg_id&gt;] &lt;miqdor&gt; — SP berish (IDsiz adminga)\n"
     "/stats — statistika"
 )
 
@@ -72,6 +74,7 @@ HELP_USER = (
     "/balance — tangam\n"
     "/shop — do'kon\n"
     "/star — Stars orqali tanga olish\n"
+    "/webapp — Telegram Web Appni ochish\n"
     "/ulash &lt;kod&gt; — sayt hisobini ulash\n"
     "/daily — kunlik bonus"
 )

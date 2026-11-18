@@ -169,6 +169,56 @@ async def cmd_give(message: Message):
         pass
 
 
+# ---------------- /addcoin /addsp ----------------
+async def _do_add(message: Message, kind: str):
+    parts = (message.text or "").split()
+    usage = (
+        f"Foydalanish: <code>/{kind} &lt;miqdor&gt;</code> — o'zingizga\n"
+        f"yoki <code>/{kind} &lt;tg_id&gt; &lt;miqdor&gt;</code> — boshqaga."
+    )
+    if len(parts) not in (2, 3):
+        await message.answer(usage)
+        return
+    try:
+        target = int(parts[1]) if len(parts) == 3 else message.from_user.id
+        amount = int(parts[-1])
+    except ValueError:
+        await message.answer("❌ ID va miqdor butun son bo'lishi kerak.\n" + usage)
+        return
+    if target <= 0 or amount <= 0:
+        await message.answer("❌ Miqdor musbat bo'lishi kerak.\n" + usage)
+        return
+
+    db.get_or_create_user(target, None, None)
+    if kind == "coin":
+        db.add_coins(target, amount)
+        label = f"+{amount} tanga"
+    else:
+        db.add_skills(target, amount)
+        label = f"+{amount} SP"
+
+    await message.answer(f"✅ {target} ga {label} berildi.")
+    if target != message.from_user.id:
+        try:
+            await message.bot.send_message(target, f"🎁 Admin sizga {label} berdi!")
+        except Exception:
+            pass
+
+
+@router.message(Command("addcoin"))
+async def cmd_addcoin(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await _do_add(message, "coin")
+
+
+@router.message(Command("addsp"))
+async def cmd_addsp(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await _do_add(message, "sp")
+
+
 # ---------------- /stats ----------------
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
