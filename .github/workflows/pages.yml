@@ -1,10 +1,10 @@
-name: Deploy site to GitHub Pages
+name: Deploy Web App to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
-      - "sayt/**"
+      - "webapp/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -27,7 +27,7 @@ jobs:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: sayt
+          path: webapp
 
   deploy:
     needs: build

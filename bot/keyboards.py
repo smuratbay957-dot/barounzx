@@ -1,7 +1,7 @@
 # ============================================================
 #  Barounzx bot - klaviaturalar
 # ============================================================
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 from config import CHANNEL_URL, GROUP_URL, SITE_URL
 
@@ -28,8 +28,14 @@ def main_menu_kb() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="⭐ Stars orqali tanga", callback_data="menu:stars"),
-            InlineKeyboardButton(text="🌐 Saytni ochish", url=SITE_URL),
+            InlineKeyboardButton(text="🎮 Web App", web_app=WebAppInfo(url=SITE_URL)),
         ],
+    ])
+
+
+def webapp_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 O'yinni ochish", web_app=WebAppInfo(url=SITE_URL))],
     ])
 
 

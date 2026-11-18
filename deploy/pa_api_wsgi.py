@@ -19,6 +19,8 @@ if BOT_DIR not in sys.path:
     sys.path.insert(0, BOT_DIR)
 
 import database as db  # noqa: E402
+from config import BOT_TOKEN  # noqa: E402
+import webapp_auth  # noqa: E402
 
 db.init_db()
 
@@ -70,6 +72,41 @@ def application(environ, start_response):
     try:
         if path == "/api/health":
             return _json(start_response, "200 OK", {"ok": True, "service": "barounzx-api"})
+
+        # --- Telegram Web App: initData orqali avtomatik ulash ---
+        if path == "/api/webapp/auth" and method == "POST":
+            data = _body(environ)
+            user = webapp_auth.validate_init_data(data.get("init_data"), BOT_TOKEN)
+            if not user:
+                return _json(start_response, "401 Unauthorized",
+                             {"ok": False, "error": "initData yaroqsiz"})
+            res = db.link_webapp(
+                user.get("id"), user.get("username"), user.get("first_name")
+            )
+            if not res:
+                return _json(start_response, "500 Internal Server Error",
+                             {"ok": False, "error": "ulash muvaffaqiyatsiz"})
+            return _json(start_response, "200 OK", {"ok": True, **res})
+
+        if path == "/api/items" and method == "GET":
+            return _json(start_response, "200 OK",
+                         {"ok": True, "items": db.list_items()})
+
+        if path in ("/api/daily", "/api/spin", "/api/buy") and method == "POST":
+            data = _body(environ)
+            token = data.get("token")
+            if path == "/api/daily":
+                res = db.webapp_daily(token)
+            elif path == "/api/spin":
+                res = db.webapp_spin(token)
+            else:
+                res = db.webapp_buy(token, data.get("item_id"))
+            if res is None:
+                return _json(start_response, "401 Unauthorized",
+                             {"ok": False, "error": "token xato"})
+            if res.get("error"):
+                return _json(start_response, "200 OK", {"ok": False, **res})
+            return _json(start_response, "200 OK", {"ok": True, **res})
 
         # --- Sayt kod oladi ---
         if path == "/api/link/start" and method == "POST":

@@ -10,9 +10,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 import database as db
-from config import BOT_TOKEN, PROXY_URL
+from config import BOT_TOKEN, PROXY_URL, SITE_URL
 from handlers import account, admin, common, freeskill, shop, stars
 
 
@@ -42,6 +43,14 @@ async def main():
     dp.include_router(common.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="Barounzx", web_app=WebAppInfo(url=SITE_URL)
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Menyu tugmasini o'rnatib bo'lmadi: %s", exc)
     logging.info("Barounzx bot ishga tushdi...")
     await dp.start_polling(bot)
 

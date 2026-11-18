@@ -1,12 +1,13 @@
 # ============================================================
 #  Barounzx bot - ma'lumotlar bazasi (SQLite)
 # ============================================================
+import random
 import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
-from config import DB_PATH, XP_PER_SKILL
+from config import DAILY_COINS, DB_PATH, XP_PER_SKILL
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -370,6 +371,113 @@ def raise_sp(tg_id, token):
             "level": level,
             "coins": row["coins"],
         }
+
+
+# ---------------- Telegram Web App ----------------
+def _web_state(row, **overrides):
+    data = {
+        "tg_id": row["tg_id"],
+        "site_username": row["site_username"],
+        "skills": row["skills"],
+        "xp": row["xp"],
+        "level": row["level"],
+        "coins": row["coins"],
+    }
+    data.update(overrides)
+    return data
+
+
+def _apply_levels(xp, level, coins):
+    while xp >= _xp_to_next(level):
+        xp -= _xp_to_next(level)
+        level += 1
+        coins += 25 + level * 10
+    return xp, level, coins
+
+
+def link_webapp(tg_id, username=None, first_name=None):
+    """initData tasdiqlangandan keyin Telegram foydalanuvchisini ulaydi."""
+    try:
+        tg_id = int(tg_id)
+    except (TypeError, ValueError):
+        return None
+    get_or_create_user(tg_id, username, first_name)
+    token = secrets.token_urlsafe(24)
+    name = str(username or first_name or tg_id).lstrip("@")
+    with db() as c:
+        c.execute(
+            "UPDATE users SET site_linked=1, site_username=?, site_token=?, "
+            "username=?, first_name=? WHERE tg_id=?",
+            (name, token, username, first_name, tg_id),
+        )
+    return {"token": token, **get_site_state(tg_id, token)}
+
+
+def webapp_daily(token):
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE site_token=?", (token,)).fetchone()
+        if not row:
+            return None
+        today = date.today().isoformat()
+        if row["last_daily"] == today:
+            return {"error": "already", **_web_state(row)}
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        streak = row["streak"] + 1 if row["last_daily"] == yesterday else 1
+        reward = DAILY_COINS + streak * 5
+        xp, level, coins = _apply_levels(
+            row["xp"] + 25, row["level"], row["coins"] + reward
+        )
+        c.execute(
+            "UPDATE users SET coins=?, xp=?, level=?, last_daily=?, streak=? WHERE tg_id=?",
+            (coins, xp, level, today, streak, row["tg_id"]),
+        )
+        return {
+            **_web_state(row, coins=coins, xp=xp, level=level),
+            "reward": reward,
+            "streak": streak,
+        }
+
+
+def webapp_spin(token):
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE site_token=?", (token,)).fetchone()
+        if not row:
+            return None
+        if row["coins"] < 50:
+            return {"error": "no_money", **_web_state(row)}
+        win = random.choices(
+            [0, 10, 20, 50, 100, 200], weights=[10, 25, 25, 20, 15, 5]
+        )[0]
+        xp, level, coins = _apply_levels(
+            row["xp"] + 20, row["level"], row["coins"] - 50 + win
+        )
+        c.execute(
+            "UPDATE users SET coins=?, xp=?, level=? WHERE tg_id=?",
+            (coins, xp, level, row["tg_id"]),
+        )
+        return {**_web_state(row, coins=coins, xp=xp, level=level), "win": win}
+
+
+def webapp_buy(token, item_id):
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE site_token=?", (token,)).fetchone()
+    if not row:
+        return None
+    res = buy_item(row["tg_id"], item_id)
+    if not res or res.get("error"):
+        return res
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE tg_id=?", (row["tg_id"],)).fetchone()
+        xp, level, coins = _apply_levels(row["xp"] + 15, row["level"], row["coins"])
+        c.execute(
+            "UPDATE users SET xp=?, level=?, coins=? WHERE tg_id=?",
+            (xp, level, coins, row["tg_id"]),
+        )
+    return {
+        **_web_state(row, xp=xp, level=level, coins=coins),
+        "gained": res["gained"],
+        "spent": res["spent"],
+    }
 
 
 # ---------------- Items ----------------

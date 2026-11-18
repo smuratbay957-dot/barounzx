@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f1a">
+    <title>Barounzx Web App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="topbar">
+            <div class="user">
+                <div class="avatar" id="avatar">B</div>
+                <div class="user-meta">
+                    <b id="userName">Barounzx</b>
+                    <span id="userSub">Telegram Web App</span>
+                </div>
+            </div>
+            <button class="icon-btn" id="closeBtn" title="Yopish">✕</button>
+        </header>
+
+        <div id="loginGate" class="gate" hidden>
+            <div class="gate-icon">🎮</div>
+            <h2>Barounzx Web App</h2>
+            <p>Bu ilova Telegram ichida ishlaydi. Bot orqali oching:</p>
+            <a class="primary-btn" href="https://t.me/zxmaxbot">Botni ochish</a>
+        </div>
+
+        <main id="main">
+            <section class="wallet-card">
+                <div class="wallet-left">
+                    <span class="label">Tanga</span>
+                    <div class="big"><span id="coins">0</span> <em>🪙</em></div>
+                </div>
+                <div class="wallet-right">
+                    <span class="label">Umumiy SP</span>
+                    <div class="big"><span id="sp">0</span> <em>💎</em></div>
+                </div>
+            </section>
+
+            <section class="xp-card">
+                <div class="xp-head">
+                    <span>Level <b id="level">1</b></span>
+                    <span id="xpText">0 / 100 XP</span>
+                </div>
+                <div class="progress"><div class="progress-fill" id="xpFill"></div></div>
+            </section>
+
+            <nav class="tabs">
+                <button class="tab active" data-tab="game">🎯 O'yin</button>
+                <button class="tab" data-tab="shop">🛒 Do'kon</button>
+                <button class="tab" data-tab="profile">👤 Profil</button>
+            </nav>
+
+            <section class="tab-panel active" id="tab-game">
+                <div class="card">
+                    <h3>SP ko'tarish</h3>
+                    <p class="muted">1 SP = 20 XP. SP ni botda yig'ing yoki do'kondan oling.</p>
+                    <button class="primary-btn" id="raiseBtn">⚡ SP ko'tarish</button>
+                </div>
+
+                <div class="card">
+                    <h3>Kunlik bonus</h3>
+                    <p class="muted" id="dailyHint">Har kuni tanga va XP oling.</p>
+                    <button class="ghost-btn" id="dailyBtn">🎁 Bonusni olish</button>
+                </div>
+
+                <div class="card">
+                    <h3>Super Lot</h3>
+                    <p class="muted">50 🪙 evaziga tanga yutib oling.</p>
+                    <div class="wheel" id="wheel">🎡</div>
+                    <div class="result" id="lotResult">Natija chiqadi</div>
+                    <button class="ghost-btn" id="spinBtn">🎰 Aylantirish (50 🪙)</button>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-shop">
+                <div class="card">
+                    <h3>Do'kon</h3>
+                    <p class="muted">Tanga bilan SP oling.</p>
+                </div>
+                <div id="shopList" class="shop-list"></div>
+            </section>
+
+            <section class="tab-panel" id="tab-profile">
+                <div class="card">
+                    <h3>Profil</h3>
+                    <div class="stat-row"><span>Sayt nomi</span><b id="profName">—</b></div>
+                    <div class="stat-row"><span>Telegram ID</span><b id="profTg">—</b></div>
+                    <div class="stat-row"><span>SP</span><b id="profSp">0</b></div>
+                    <div class="stat-row"><span>XP</span><b id="profXp">0</b></div>
+                    <div class="stat-row"><span>Level</span><b id="profLevel">1</b></div>
+                    <div class="stat-row"><span>Tanga</span><b id="profCoins">0</b></div>
+                    <div class="stat-row"><span>Seriya</span><b id="profStreak">0</b></div>
+                    <button class="ghost-btn" id="refreshBtn">🔄 Yangilash</button>
+                    <a class="ghost-btn link-btn" href="https://t.me/zxmaxbot">🤖 Botga qaytish</a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <script src="app.js"></script>
+</body>
+</html>

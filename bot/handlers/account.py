@@ -15,10 +15,9 @@ from utils import is_subscribed
 router = Router()
 
 LINK_HELP = (
-    "🔗 <b>Sayt hisobini ulash</b>\n\n"
-    "1. Saytga kiring\n"
-    "2. <b>Sozlamalar → Telegram ulash</b> ni bosing\n"
-    "3. Chiqqan 6 xonali kodni <code>/ulash 123456</code> ko'rinishida yuboring"
+    "🔗 <b>Hisobni ulash</b>\n\n"
+    "Eng oson: <b>/webapp</b> buyrug'i bilan ilovani oching — hisob avtomatik ulanadi.\n\n"
+    "Eski usul: saytda kod olib, <code>/ulash 123456</code> yuboring."
 )
 
 
@@ -58,6 +57,12 @@ async def cmd_link(message: Message):
         "Endi /start da sayt statistikasi ko'rinadi.",
         reply_markup=kb.main_menu_kb(),
     )
+
+
+@router.message(Command("webapp", "app"))
+async def cmd_webapp(message: Message):
+    await message.answer("🎮 <b>Barounzx Web App</b> — Telegram ichida ochiladi.",
+                         reply_markup=kb.webapp_kb())
 
 
 @router.message(Command("login"))

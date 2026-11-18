@@ -41,10 +41,10 @@ def subscribed_text(user: dict) -> str:
         )
     return (
         "✅ <b>Rahmat! Obuna tasdiqlandi.</b>\n\n"
-        "🌐 <b>Saytni oching va Telegram ulang:</b>\n"
-        "1. Saytga kiring\n"
-        "2. <b>Sozlamalar → Telegram ulash</b> ni bosing\n"
-        "3. Chiqqan kodni botga <code>/ulash 123456</code> ko'rinishida yuboring\n\n"
+        "🎮 <b>Web Appni oching:</b>\n"
+        "1. Quyidagi <b>Web App</b> tugmasini bosing\n"
+        "2. Hisob avtomatik ulanadi — kod kerak emas\n"
+        "3. Eski usul: saytda kod olib, <code>/ulash 123456</code> yuboring\n\n"
         "Quyidagi menyudan tanlang 👇"
     )
 
