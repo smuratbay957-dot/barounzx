@@ -183,9 +183,9 @@ async function apiGet(path) {
     }
 }
 
-async function apiPost(path, body) {
+async function apiPost(path, body, timeout = 12000) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
+    const timer = setTimeout(() => ctrl.abort(), timeout);
     try {
         const resp = await fetch(apiUrl(path), {
             method: "POST",
@@ -215,6 +215,7 @@ async function refreshServerState() {
         acc.skillPoints = res.skills;
         acc.xp = res.xp;
         acc.level = res.level;
+        if (typeof res.coins === "number") acc.coins = res.coins;
         saveStore();
     }
     render();
@@ -272,6 +273,18 @@ function pollLinkStatus(code) {
             acc.siteToken = res.site_token || acc.siteToken;
             acc.linkCode = null;
             saveStore();
+            try {
+                await apiPost("/api/state", {
+                    tg_id: acc.tgId,
+                    token: acc.siteToken,
+                    xp: acc.xp,
+                    level: acc.level,
+                    coins: acc.coins,
+                    skills: acc.skillPoints
+                });
+            } catch (err) {
+                /* server bo'lmasa lokal holat saqlanadi */
+            }
             await refreshServerState();
             toast("✅ Telegram ulandi!", "success");
             return;
@@ -719,7 +732,28 @@ function logout() {
 /* ============================================================
    O'yin logikasi
    ============================================================ */
-function gainXp(acc, amount) {
+async function changeCoins(acc, delta) {
+    if (!acc || !delta) return acc ? acc.coins : 0;
+    if (acc.tgId && acc.siteToken) {
+        try {
+            const res = await apiPost("/api/coins", {
+                tg_id: acc.tgId,
+                token: acc.siteToken,
+                delta: delta
+            }, 5000);
+            if (res && res.ok && typeof res.coins === "number") {
+                acc.coins = res.coins;
+                return acc.coins;
+            }
+        } catch (err) {
+            /* tarmoq yo'q — lokal hisoblash */
+        }
+    }
+    acc.coins = Math.max(0, acc.coins + delta);
+    return acc.coins;
+}
+
+async function gainXp(acc, amount) {
     acc.xp += amount;
     let leveled = false;
     while (acc.xp >= xpToNext(acc.level)) {
@@ -727,7 +761,7 @@ function gainXp(acc, amount) {
         acc.level += 1;
         leveled = true;
         const reward = 25 + acc.level * 10;
-        acc.coins += reward;
+        await changeCoins(acc, reward);
         toast(`Level ${acc.level}! +${reward} tanga`, "success");
     }
     if (leveled) {
@@ -778,7 +812,7 @@ async function raiseSkill() {
             if (newLevel > beforeLevel) {
                 let reward = 0;
                 for (let lv = beforeLevel + 1; lv <= newLevel; lv++) reward += 25 + lv * 10;
-                acc.coins += reward;
+                await changeCoins(acc, reward);
                 toast(`Level ${newLevel}! +${reward} tanga`, "success");
                 document.body.classList.add("levelup-flash");
                 setTimeout(() => document.body.classList.remove("levelup-flash"), 600);
@@ -809,25 +843,25 @@ async function raiseSkill() {
     if (acc.boost) acc.boost = false;
     acc.skillPoints -= 1;
     acc.raised += 1;
-    gainXp(acc, XP_PER_SKILL * mult);
+    await gainXp(acc, XP_PER_SKILL * mult);
     saveStore();
     render();
     toast(`SP ko'tarildi: +${XP_PER_SKILL * mult} XP`, "success");
 }
 
-function buy(itemId) {
+async function buy(itemId) {
     const acc = getAcc();
     if (!acc) { toast("Avval kiring.", "danger"); showView("login"); return; }
     const item = SHOP_ITEMS.find((i) => i.id === itemId);
     if (!item || acc.owned.includes(itemId)) return;
     if (acc.coins < item.price) { toast("Tangalar yetarli emas!", "danger"); return; }
-    acc.coins -= item.price;
+    await changeCoins(acc, -item.price);
     acc.owned.push(itemId);
     acc.stats.buys += 1;
     if (itemId === "boost_xp") acc.boost = true;
     if (itemId === "theme_pink") applyTheme("pink");
     if (itemId === "theme_blue") applyTheme("blue");
-    gainXp(acc, 15);
+    await gainXp(acc, 15);
     saveStore();
     render();
     toast(`${item.name} sotib olindi!`, "gold");
@@ -840,7 +874,7 @@ function applyTheme(theme) {
     if (acc) { acc.theme = theme; saveStore(); }
 }
 
-function spin() {
+async function spin() {
     const acc = getAcc();
     if (!acc) { toast("Avval kiring.", "danger"); showView("login"); return; }
     if (spinning) return;
@@ -848,7 +882,7 @@ function spin() {
 
     spinning = true;
     $("#spinBtn").disabled = true;
-    acc.coins -= SPIN_COST;
+    await changeCoins(acc, -SPIN_COST);
     acc.stats.spins += 1;
     saveStore();
     render();
@@ -863,10 +897,10 @@ function spin() {
     $("#wheel").style.transform = `rotate(${final}deg)`;
     $("#lotResult").textContent = "Aylanmoqda...";
 
-    setTimeout(() => {
+    setTimeout(async () => {
         const value = WHEEL_VALUES[index];
-        acc.coins += value;
-        gainXp(acc, 20);
+        await changeCoins(acc, value);
+        await gainXp(acc, 20);
         saveStore();
         $("#lotResult").textContent = `Yutdingiz: +${value} tanga!`;
         toast(`Super Lot: +${value} tanga!`, "gold");
@@ -876,7 +910,7 @@ function spin() {
     }, 4100);
 }
 
-function claimDaily() {
+async function claimDaily() {
     const acc = getAcc();
     if (!acc) { toast("Avval kiring.", "danger"); showView("login"); return; }
     if (acc.lastBonus === todayKey()) { toast("Bugun bonusni olgansiz.", "danger"); return; }
@@ -884,8 +918,8 @@ function claimDaily() {
     acc.stats.streak = acc.lastBonus === yesterday ? acc.stats.streak + 1 : 1;
     acc.lastBonus = todayKey();
     const reward = DAILY_BONUS + acc.stats.streak * 10;
-    acc.coins += reward;
-    gainXp(acc, 25);
+    await changeCoins(acc, reward);
+    await gainXp(acc, 25);
     saveStore();
     render();
     toast(`Kunlik bonus: +${reward} tanga (seriya ${acc.stats.streak})`, "gold");
@@ -1100,7 +1134,13 @@ function init() {
     setupEvents();
     render();
     const acc = getAcc();
-    if (acc && acc.tgId && acc.siteToken) refreshServerState();
+    if (acc && acc.tgId && acc.siteToken) {
+        refreshServerState();
+        setInterval(() => {
+            const cur = getAcc();
+            if (cur && cur.tgId && cur.siteToken && !document.hidden) refreshServerState();
+        }, 15000);
+    }
     if (acc && acc.linkCode) pollLinkStatus(acc.linkCode);
     document.addEventListener("visibilitychange", () => {
         const cur = getAcc();

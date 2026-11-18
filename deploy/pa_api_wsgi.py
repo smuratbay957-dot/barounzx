@@ -116,7 +116,19 @@ def application(environ, start_response):
         if path == "/api/state" and method == "POST":
             data = _body(environ)
             state = db.set_site_state(
-                data.get("tg_id"), data.get("token"), data.get("xp"), data.get("level")
+                data.get("tg_id"), data.get("token"), data.get("xp"), data.get("level"),
+                coins=data.get("coins"), skills=data.get("skills"),
+            )
+            if not state:
+                return _json(start_response, "401 Unauthorized",
+                             {"ok": False, "error": "token xato"})
+            return _json(start_response, "200 OK", {"ok": True, **state})
+
+        # --- Tanga o'zgarishi (site <-> bot bitta bazada) ---
+        if path == "/api/coins" and method == "POST":
+            data = _body(environ)
+            state = db.adjust_coins(
+                data.get("tg_id"), data.get("token"), data.get("delta")
             )
             if not state:
                 return _json(start_response, "401 Unauthorized",

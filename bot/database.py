@@ -274,11 +274,13 @@ def get_site_state(tg_id, token):
         }
 
 
-def set_site_state(tg_id, token, xp, level):
+def set_site_state(tg_id, token, xp, level, coins=None, skills=None):
     try:
         tg_id = int(tg_id)
         xp = max(0, int(xp or 0))
         level = max(1, int(level or 1))
+        coins = max(0, int(coins)) if coins is not None else None
+        skills = max(0, int(skills)) if skills is not None else None
     except (TypeError, ValueError):
         return None
     with db() as c:
@@ -287,14 +289,44 @@ def set_site_state(tg_id, token, xp, level):
         ).fetchone()
         if not row:
             return None
-        c.execute("UPDATE users SET xp=?, level=? WHERE tg_id=?", (xp, level, tg_id))
+        new_coins = row["coins"] if coins is None else coins
+        new_skills = row["skills"] if skills is None else skills
+        c.execute(
+            "UPDATE users SET xp=?, level=?, coins=?, skills=? WHERE tg_id=?",
+            (xp, level, new_coins, new_skills, tg_id),
+        )
+        return {
+            "tg_id": tg_id,
+            "site_username": row["site_username"],
+            "skills": new_skills,
+            "xp": xp,
+            "level": level,
+            "coins": new_coins,
+        }
+
+
+def adjust_coins(tg_id, token, delta):
+    """Tangalarni atomik tarzda o'zgartiradi (sayt va bot umumiy baza)."""
+    try:
+        tg_id = int(tg_id)
+        delta = int(delta)
+    except (TypeError, ValueError):
+        return None
+    with db() as c:
+        row = c.execute(
+            "SELECT * FROM users WHERE tg_id=? AND site_token=?", (tg_id, token)
+        ).fetchone()
+        if not row:
+            return None
+        coins = max(0, row["coins"] + delta)
+        c.execute("UPDATE users SET coins=? WHERE tg_id=?", (coins, tg_id))
         return {
             "tg_id": tg_id,
             "site_username": row["site_username"],
             "skills": row["skills"],
-            "xp": xp,
-            "level": level,
-            "coins": row["coins"],
+            "xp": row["xp"],
+            "level": row["level"],
+            "coins": coins,
         }
 
 
